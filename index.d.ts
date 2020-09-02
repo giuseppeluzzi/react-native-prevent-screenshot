@@ -1,1 +1,3 @@
-declare module 'react-native-prevent-screenshot';
+declare module 'react-native-prevent-screenshot' {
+	export function usePreventScreenCapture(): void;
+}
