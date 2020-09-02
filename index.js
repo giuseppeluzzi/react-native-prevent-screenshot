@@ -1,4 +1,5 @@
-import { NativeModules, useEffect } from 'react-native';
+import { useEffect } from 'react';
+import { NativeModules } from 'react-native';
 
 const { RNPreventScreenshot } = NativeModules;
 
