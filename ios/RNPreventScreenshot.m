@@ -1,9 +1,7 @@
 #import "RNPreventScreenshot.h"
-#import "UIImage+ImageEffects.h"
 
 @implementation RNPreventScreenshot {
-    BOOL enabled;
-    UIImageView *obfuscatingView;
+    UIView *_blockView;
 }
 
 - (dispatch_queue_t)methodQueue
@@ -12,61 +10,56 @@
 }
 RCT_EXPORT_MODULE();
 
-#pragma mark - Lifecycle
 
 - (instancetype)init {
-    if ((self = [super init])) {
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(handleAppStateResignActive)
-                                                    name:UIApplicationWillResignActiveNotification
-                                                   object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(handleAppStateActive)
-                                                     name:UIApplicationDidBecomeActiveNotification
-                                                   object:nil];
-    }
-    return self;
+  if (self = [super init]) {
+    CGFloat boundLength = MAX([[UIScreen mainScreen] bounds].size.width, [[UIScreen mainScreen] bounds].size.height);
+    _blockView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, boundLength, boundLength)];
+    _blockView.backgroundColor = UIColor.blackColor;
+  }
+  return self;
 }
 
-#pragma mark - App Notification Methods
+#pragma mark - PreventScreen API
 
-- (void)handleAppStateResignActive {
-    if (self->enabled) {
-        UIWindow    *keyWindow = [UIApplication sharedApplication].keyWindow;
-        UIImageView *blurredScreenImageView = [[UIImageView alloc] initWithFrame:keyWindow.bounds];
+- (void)preventScreenRecording {
+  if (@available(iOS 11.0, *)) {
+    BOOL isCaptured = [[UIScreen mainScreen] isCaptured];
 
-        UIGraphicsBeginImageContext(keyWindow.bounds.size);
-        [keyWindow drawViewHierarchyInRect:keyWindow.frame afterScreenUpdates:NO];
-        UIImage *viewImage = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-
-        blurredScreenImageView.image = [viewImage applyLightEffect];
-
-        self->obfuscatingView = blurredScreenImageView;
-        [[UIApplication sharedApplication].keyWindow addSubview:self->obfuscatingView];
-
+    if (isCaptured) {
+      [UIApplication.sharedApplication.keyWindow.subviews.firstObject addSubview:_blockView];
+    } else {
+      [_blockView removeFromSuperview];
     }
+  }
 }
 
-- (void)handleAppStateActive {
-    if  (self->obfuscatingView) {
-        [UIView animateWithDuration: 0.3
-                         animations: ^ {
-                             self->obfuscatingView.alpha = 0;
-                         }
-                         completion: ^(BOOL finished) {
-                             [self->obfuscatingView removeFromSuperview];
-                             self->obfuscatingView = nil;
-                         }
-         ];
-    }
-}
 
 #pragma mark - Public API
 
-RCT_EXPORT_METHOD(enabled:(BOOL) _enable) {
-    self->enabled = _enable;
+RCT_REMAP_METHOD(preventScreenCapture,
+findEventsWithResolver:(RCTPromiseResolveBlock)resolve
+rejecter:(RCTPromiseRejectBlock)reject) {
+    if (@available(iOS 11.0, *) ) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self preventScreenRecording];
+      });
+
+      [[NSNotificationCenter defaultCenter] removeObserver:self name:UIScreenCapturedDidChangeNotification object:nil];
+      [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(preventScreenRecording) name:UIScreenCapturedDidChangeNotification object:nil];
+    }
+    
+    resolve([NSNull null]);
 }
 
+
+RCT_REMAP_METHOD(enableScreenCapture,
+_findEventsWithResolver:(RCTPromiseResolveBlock)resolve
+_rejecter:(RCTPromiseRejectBlock)reject) {
+  if (@available(iOS 11.0, *)) {
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIScreenCapturedDidChangeNotification object:nil];
+  }
+  resolve([NSNull null]);
+}
 
 @end
