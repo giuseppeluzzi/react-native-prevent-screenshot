@@ -1,4 +1,3 @@
-
 #import "RNPreventScreenshot.h"
 #import "UIImage+ImageEffects.h"
 
