@@ -24,9 +24,31 @@ RCT_EXPORT_MODULE();
 
 - (void)preventScreenRecording {
   if (@available(iOS 11.0, *)) {
+      UIScreen *aScreen;
+      BOOL isMainScreenMirrored = NO;
+      NSArray *screens = [UIScreen screens];
+      for (aScreen in screens)
+      {
+          if ([aScreen respondsToSelector:@selector(mirroredScreen)]
+              && [aScreen mirroredScreen] == [UIScreen mainScreen])
+          {
+              // The main screen is being mirrored.
+              isMainScreenMirrored = YES;
+          }
+      }
+
+      /*if (@available(iOS 11.0, *)) {
+          BOOL isCaptured = [[UIScreen mainScreen] isCaptured];
+          if (isCaptured && !isMainScreenMirrored) {
+
+              //Display Alert : "Please turn off screen recording and play again."
+
+          }
+      }*/
+
     BOOL isCaptured = [[UIScreen mainScreen] isCaptured];
 
-    if (isCaptured) {
+    if (isCaptured && !isMainScreenMirrored) {
       [UIApplication.sharedApplication.keyWindow.subviews.firstObject addSubview:_blockView];
     } else {
       [_blockView removeFromSuperview];
